@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+'''
+Ugly monitoring app
+    Parameters:
+        input_type (string):
+        scan_type (string):
+        max_agent_pu
+
+'''
+
 
 # stdlib imports
 import getopt
