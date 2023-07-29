@@ -1,38 +1,99 @@
 #!/usr/bin/env python
 
 # stdlib imports
-import base64
-import hashlib
-import json
-import os
-import time
-import uuid
-# third party imports
-import boto3
-import requests
+import getopt
+# remove first arg/program name
+argslist = sys.argv[1:]
 
-input_type = 'nfs'
-scan_type = 'agent-pull'
-max_agent_pull_retries = 10
-nfs_read_dir = '/nfs/agent-output'
-storage_type = 's3'
-s3_region = 'eu-west-1'
-s3_bucket_prefix = 'ip-scanner-results'
-nfs_write_dir = '/nfs/ip-scanner-results'
+# Options
+OPTIONS = "hdi:g:s:m:n:t:r:p:o:"
+# Long options
+long_options = ["help",
+                "debug",
+                "input_type=",
+                "input_target=",
+                "scan_type=",
+                "max_agent_pull_retries=",
+                "nfs_read_dir",
+                "storage_type="
+                "s3_region=",
+                "s3_bucket_prefix=",
+                "nfs_write_dir=",
+                ]
 
-def validateIP(maybe_ip):
-    if not isinstance(maybe_ip, str):
-        raise Exception('ip not a string: %s' % maybe_ip)
-    parts = maybe_ip.split('.')
-    if len(parts) != 4:
-        raise Exception('ip not a dotted quad: %s' % maybe_ip)
-    for num_s in parts:
-        try:
-            num = int(num_s)
-        except ValueError:
-            raise Exception('ip dotted-quad components not all integers: %s' % maybe_ip)
-        if num < 0 or num > 255:
-            raise Exception('ip dotted-quad component not between 0 and 255: %s' % maybe_ip)
+try:
+    # Parse args
+    args, values = getopt.getopt(argslist, OPTIONS, long_options)
+except getopt.error as err:
+        # we hit an error, print details
+        u.pm(f"ERROR: arg parsing error=>{str(err)}<")
+
+# globals and default values
+# ARCH = 'ARCH_NOT_SET'
+# NUM  = 10
+
+def main(args) -> int:
+    # default values:
+    input_type = 'nfs'
+    input_target = 'path-to-ip-lists.txt'
+    scan_type = 'agent-pull'
+    max_agent_pull_retries = 10
+    nfs_read_dir = '/nfs/agent-output'
+    storage_type = 's3'
+    s3_region = 'eu-west-1'
+    s3_bucket_prefix = 'ip-scanner-results'
+    nfs_write_dir = '/nfs/ip-scanner-results'
+
+    # check args
+    for arg, val in args:
+        if arg in ("-h", "--help"):
+            u.pm("Display help")
+            u.show_help()
+
+        elif arg in ("-d", "--debug"):
+            u.pm("Enable debug output")
+            u.DEBUG = True
+
+        elif arg in ("-i", "--input_type"):
+            input_type = val
+            # TODO add validation code:
+            # can be 'nfs' or 'api'
+
+        elif arg in ("-g", "--input_target"):
+            input_target = val
+            # TODO add validation code:
+            # if input_type == nfs, should be a file that exists
+            # if input_type == api, should be valid uri (test existence later in )
+
+        elif arg in ("-s", "--scan_type"):
+            scan_type = val
+            # TODO add validation code
+            # can be 'agent-pull' or 'nfs-read'
+
+        elif arg in ("-m", "--max_agent_pull_retries"):
+            max_agent_pull_retries = val
+            # TODO add validation code
+
+        elif arg in ("-n", "--nfs_read_dir"):
+            nfs_read_dir = val
+            # TODO add validation code
+
+        elif arg in ("-t", "--storage_type"):
+            storage_type = val
+            # TODO add validation code
+            # can be 's3' or 'nfs-write'
+
+        elif arg in ("-r", "--s3_region"):
+            s3_region = val
+            # TODO add validation code
+
+        elif arg in ("-p", "--s3_bucket_prefix"):
+            s3_bucket_prefix = val
+            # TODO add validation code
+
+        elif arg in ("-o", "--nfs_write_dir"):
+            nfs_write_dir = val
+            # TODO add validation code
 
 ip_list = None
 if input_type == 'nfs':
