@@ -108,125 +108,33 @@ def main(args) -> int:
             nfs_write_dir = val
             # TODO add validation code
 
-ip_list = None
-if input_type == 'nfs':
-    with open('path-to-ip-lists.txt') as fd:
-        path_to_ip_lists = fd.read()
-    ip_list = []
-    for dir_name, subdir_list, file_list in os.walk(path_to_ip_lists):
-        for file in file_list:
-            with open(file) as fd:
-                data = json.load(fd)
-            ip_list.extend(data['iplist'])
-            for ip in ip_list:
-                validateIP(ip)
-elif input_type == 'api':
-    response = requests.get('https://api/iplist')
-    if response.status_code != 200:
-        raise Exception('non-200 status code: %d' % response.status_code)
-    data = json.loads(response.text)
-    ip_list = data['iplist']
-    page_counter = 0
-    while data['more'] is True:
-        page_counter += 1
-        response = requests.get('https://api/iplist?page=%d' % page_counter)
-        if response.status_code != 200:
-            raise Exception('non-200 status code: %d' % response.status_code)
-        data = json.loads(response.text)
-        ip_list.extend(data['iplist'])
-    for ip in ip_list:
-        validateIP(ip)
-if ip_list is None:
-    raise Exception('unrecognized input_type "%s"' % input_type)
+        # populate ip_list array
+        ip_list = None
+        if input_type == 'nfs':
+            ip_list = u.open_target_file(input_target)
+        elif input_type == 'api':
+            ip_list = u.open_api(input_target)
+        if ip_list is None:
+            raise Exception(f"unrecognized input_type {input_type}")
 
-results = None
-if scan_type == 'agent-pull':
-    results = dict()
-    for ip in ip_list:
-        response = requests.get('https://%s/portdiscovery' % ip)
-        if response.status_code != 200:
-            raise Exception('non-200 status code: %d' % response.status_code)
-        data = json.loads(response.text)
-        agent_url = '%s/api/2.0/status' % data['agenturl']
-        response = requests.get(agent_url)
-        retries = 0
-        while response.status_code == 503:
-            if retries > max_agent_pull_retries:
-                raise Exception('max retries exceeded for ip %s' % ip)
-            retries += 1
-            time_to_wait = float(response.headers['retry-after'])
-            time.sleep(time_to_wait)
-            response = requests.get(agent_url)
-        if response.status_code != 200:
-            raise Exception('non-200 status code: %d' % response.status_code)
-        results[ip] = data['status']
-elif scan_type == 'nfs-read':
-    results = dict()
-    for ip in ip_list:
-        agent_nfs_path = '%s/%s' % (nfs_read_dir, ip)
-        for dir_name, subdir_list, file_list in os.walk(agent_nfs_path):
-            for file in file_list:
-                with open(file) as fd:
-                    data = json.load(fd)
-                if 'schema' not in data or float(data['schema']) < 2.0:
-                    result = data
-                else:
-                    result = data['status']
-                results[ip] = result
-else:
-    raise Exception('unrecognized scan_type %s' % scan_type)
+        results = dict()
+        if scan_type == 'agent-pull':
+            results = u.agent_pull(ip_list, max_agent_pull_retries)
+        elif scan_type == 'nfs-read':
+            results = u.nfs_read(ip_list, nfs_read_dir)
+        else:
+            raise Exception(f"unrecognized scan_type {scan_type}")
 
-def storeResultsInS3(results, region):
-    client, bucketname = getorcreatebucketandclient(region)
-    dosS3Storage(client, bucketname, results)
-def getorcreatebucketandclient(region):
-    client = genS3client(region)
-    bucket = getExistingBucketName(client)
-    if bucket is None:
-        bucket = createBucket(client)
-    return client, bucket
-def genS3client(region=None):
-    if region is None:
-        return boto3.client('s3')
-    else:
-        return boto3.client('s3', region_name=region)
-def getExistingBucketName(client):
-    response = client.list_buckets()
-    for bucket in response['buckets']:
-        if s3_bucket_prefix in bucket['name']:
-            return bucket['name']
-    return None
-def createBucket(client, region):
-    bucket_name = genBucketName()
-    if region is None:
-        client.create_bucket(Bucket=bucket_name)
-    else:
-        location = {'locationconstraint': region}
-        client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration=location)
-    return bucket_name
-def genBucketName():
-    return s3_bucket_prefix + str(uuid.uuid4())
-def dosS3Storage(client, bucketname, results):
-    data, data_hash = marshalResultsToObject(results)
-    client.put_object(
-        ACL='bucket-owner-full-control',
-        Body=data,
-        Bucket=bucketname,
-        ContentEncoding='application/json',
-        ContentMD5=data_hash,
-        Key=file_name,
-    )
-def marshalResultsToObject(results):
-    v2schema = {
-        'schema': 2.0,
-        'results': results,
-    }
-    data = json.dumps(v2schema)
-    hash = hashlib.md5(str.encode(data))
-    b64hash = base64.encode(hash.digest())
-    return data, b64hash
-def genFileKey():
-    return time.strftime('%y-%m-%d-%h:%m:%s', time.localtime())
+        if storage_type == 's3':
+            u.storeResultsInS3(results, s3_region, s3_bucket_prefix)
+        elif storage_type == 'nfs-write':
+            u.nfs_write(results, nfs_write_dir)
+        else:
+            raise Exception(f"unrecognized storage_type {storage_type}")
 
+        return 0
+
+# start main script
 if __name__ == '__main__':
+    raise SystemExit(main(args))
 
