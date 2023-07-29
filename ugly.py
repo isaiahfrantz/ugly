@@ -228,18 +228,5 @@ def marshalResultsToObject(results):
 def genFileKey():
     return time.strftime('%y-%m-%d-%h:%m:%s', time.localtime())
 
-if storage_type == 's3':
-    storeResultsInS3(results, s3_region)
-elif storage_type == 'nfs-write':
-    file_name = time.strftime('%y-%m-%d-%h:%m:%s', time.localtime())
-    file_full_path = '/'.join([nfs_write_dir, file_name]) + '.json'
-    v2schema = {
-        'schema': 2.0,
-        'results': results,
-    }
-    data = json.dumps(v2schema)
-    with open(file_full_path, 'w') as fd:
-        fd.write(data)
-else:
-    raise Exception('unrecognized storage_type %s' % storage_type)
+if __name__ == '__main__':
 
