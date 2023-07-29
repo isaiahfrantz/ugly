@@ -11,6 +11,10 @@ Ugly monitoring app
 
 # stdlib imports
 import getopt
+
+# ugly module
+import ugly_lib as u
+
 # remove first arg/program name
 argslist = sys.argv[1:]
 
