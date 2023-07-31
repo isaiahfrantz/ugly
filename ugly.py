@@ -11,9 +11,11 @@ Ugly monitoring app
 
 # stdlib imports
 import getopt
+import sys
+import re
 
 # ugly module
-import ugly_lib as u
+from ugly_lib import Ugly
 
 # remove first arg/program name
 argslist = sys.argv[1:]
@@ -39,7 +41,7 @@ try:
     args, values = getopt.getopt(argslist, OPTIONS, long_options)
 except getopt.error as err:
         # we hit an error, print details
-        u.pm(f"ERROR: arg parsing error=>{str(err)}<")
+        pm(f"ERROR: arg parsing error=>{str(err)}<")
 
 # globals and default values
 # ARCH = 'ARCH_NOT_SET'
@@ -60,11 +62,11 @@ def main(args) -> int:
     # check args
     for arg, val in args:
         if arg in ("-h", "--help"):
-            u.pm("Display help")
-            u.show_help()
+            pm("Display help")
+            show_help()
 
         elif arg in ("-d", "--debug"):
-            u.pm("Enable debug output")
+            pm("Enable debug output")
             u.DEBUG = True
 
         elif arg in ("-i", "--input_type"):
@@ -132,7 +134,47 @@ def main(args) -> int:
         else:
             raise Exception(f"unrecognized storage_type {storage_type}")
 
+
         return 0
+
+def show_help(exit_code=0):
+    '''
+    Display help and exit
+        Parameters:
+            exit_code (int): default is zero, if set will exit with provided exit_code
+        Returns:
+            None
+    '''
+    print ("""Args:
+    -h,--help                       display this help
+    -d,--debug                      print debug output
+    -i,--input_type                 where input data is coming from
+    -g,--input_target               filename or api uri to get input
+    -s,--scan_type                  type of scan
+    -m,--max_agent_pull_retries     max retries
+    -n,--nfs_read_dir               nfs target dir
+    -t,--storage_type               type of storage to write output
+    -r,--s3_region                  s3 output region
+    -p,--s3_bucket_prefix           s3 output prefix
+    -o,--nfs_write_dir              nfs output dir""")
+    sys.exit(exit_code)
+
+def pm(message):
+    '''
+    Handles printing messages
+        Parameters:
+            message (string):
+                If it contains the string DEBUG, print it to stderr only if the global DEBUG is True
+                If it doesn't contain DEBUG, print message to stdout as it is
+        Returns:
+            None
+    '''
+    if re.search(r"DEBUG",message):
+        if DEBUG:
+            print(message, file=sys.stderr)
+    else:
+        print(message)
+
 
 # start main script
 if __name__ == '__main__':
