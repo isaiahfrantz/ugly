@@ -119,7 +119,7 @@ class Nfs_client(Ugly):
         self._write_dir = write_dir
 
     def nfs_write(self, results, write_dir):
-        file_name = time.strftime('%y-%m-%d-%h:%m:%s', time.localtime())
+        file_name = Ugly.GenFileKey()
         file_full_path = f"{write_dir}/{file_name}.json"
         v2schema = {
             'schema': 2.0,
@@ -267,13 +267,14 @@ class S3_client(Ugly):
 
     def dosS3Storage(self, client, bucketname, results):
         data, data_hash = self.marshalResultsToObject(results)
+        file_name = Ugly.GenFileKey()
         client.put_object(
             ACL='bucket-owner-full-control',
             Body=data,
             Bucket=bucketname,
             ContentEncoding='application/json',
             ContentMD5=data_hash,
-            Key=file_name, # TODO: where is this file_name coming from?
+            Key=file_name,
         )
 
     def marshalResultsToObject(self, results):
