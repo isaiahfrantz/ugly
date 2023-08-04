@@ -1,13 +1,2 @@
-getopt
-sys
-os
-re
-base64
-hashlib
-json
-os
-time
-uuid
 boto3
 requests
-ABC
