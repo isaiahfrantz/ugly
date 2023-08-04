@@ -12,7 +12,7 @@ def test_ValidateIP_not_string_exception():
 
 def test_ValidateIP_not_4_parts_exception():
     with pytest.raises(ValueError) as e:
-        arg='1.1.1.'
+        arg='1.1.1'
         Ugly.ValidateIP(arg)
 
     assert 'ip not a dotted quad' in str(e.value)
